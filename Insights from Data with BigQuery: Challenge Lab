@@ -1,1 +1,130 @@
-test 
+-- Query 1: Total Confirmed Cases
+SELECT sum(confirmed) as total_cases_worldwide 
+FROM `bigquery-public-data.covid19_jhu_csse.summary` 
+where date = '2020-04-15' 
+
+-- Query 2: Worst Affected Areas
+-- Original answer : 
+With deaths_by_states as 
+(
+SELECT 
+province_state, 
+sum (deaths) deaths
+FROM `bigquery-public-data.covid19_jhu_csse_eu.summary` 
+WHERE date = '2020-04-10'
+AND country_region = 'US'
+group by 1
+Order by deaths desc
+)
+select count(*) count_of_states from deaths_by_states where deaths > 100
+
+-- Accepted answer : 
+select count(province_state) as count_of_states from 
+(
+SELECT 
+province_state, 
+FROM `bigquery-public-data.covid19_jhu_csse_eu.summary` 
+WHERE date = '2020-04-10'
+AND country_region = 'US'
+AND province_state IS NOT NULL
+group by 1
+Having deaths >= 100
+)
+
+
+-- Query 3: Identifying Hotspots
+
+SELECT 
+province_state as state, 
+sum(confirmed) as total_confirmed_cases
+FROM `bigquery-public-data.covid19_jhu_csse_eu.summary` 
+WHERE date = '2020-04-10'
+AND country_region = 'US'
+Group by 1
+Having total_confirmed_cases >1000
+ORDER BY total_confirmed_cases desc
+
+-- Query 4: Fatality Ratio
+
+SELECT 
+sum(deaths) total_deaths, sum(confirmed) total_confirmed_cases, sum(deaths) /sum(confirmed)*100 as case_fatality_ratio
+FROM `bigquery-public-data.covid19_jhu_csse_eu.summary`  
+WHERE country_region = 'Italy'
+and date='2020-04-30'
+--and date between '2020-04-01' and '2020-04-30' (error some sort)
+
+-- Query 5: Identifying specific day
+SELECT 
+date, sum(deaths) total_deaths, sum(confirmed) total_confirmed_cases, sum(deaths) /sum(confirmed)*100 as case_fatality_ratio
+FROM `bigquery-public-data.covid19_jhu_csse_eu.summary`  
+WHERE country_region = 'Italy'
+and deaths > 10000
+Group by 1
+
+-- Query 6: Finding days with zero net new cases
+-- Combine both queries together : 
+
+WITH india_cases_by_date AS (
+  SELECT
+    date,
+    SUM(confirmed) AS cases
+  FROM
+    `bigquery-public-data.covid19_jhu_csse_eu.summary`
+  WHERE
+    country_region="India"
+    AND date between '2020-02-21' and '2020-03-15'
+  GROUP BY
+    date
+  ORDER BY
+    date ASC
+ )
+
+, india_previous_day_comparison AS
+(SELECT
+  date,
+  cases,
+  LAG(cases) OVER(ORDER BY date) AS previous_day,
+  cases - LAG(cases) OVER(ORDER BY date) AS net_new_cases
+FROM 
+( SELECT
+    date,
+    SUM(confirmed) AS cases
+  FROM
+    `bigquery-public-data.covid19_jhu_csse_eu.summary`
+  WHERE
+    country_region="India"
+    AND date between '2020-02-21' and '2020-03-15'
+  GROUP BY
+    date
+  ORDER BY
+    date ASC) 
+    
+-- To realise function `LAG(cases) OVER(ORDER BY date)` logs the previous confirmed case #
+
+-- Accepted answer : 
+WITH india_cases_by_date AS (
+  SELECT
+    date,
+    SUM(confirmed) AS cases
+  FROM
+    `bigquery-public-data.covid19_jhu_csse_eu.summary`
+  WHERE
+    country_region="India"
+    AND date between '2020-02-21' and '2020-03-15'
+  GROUP BY
+    date
+  ORDER BY
+    date ASC
+ )
+
+, india_previous_day_comparison AS
+(SELECT
+  date,
+  cases,
+  LAG(cases) OVER(ORDER BY date) AS previous_day,
+  cases - LAG(cases) OVER(ORDER BY date) AS net_new_cases
+FROM india_cases_by_date
+)
+
+select date from india_previous_day_comparison
+where net_new_cases=0
