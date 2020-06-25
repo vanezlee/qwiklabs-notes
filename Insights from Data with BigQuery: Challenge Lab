@@ -213,7 +213,7 @@ from summary
 
 
 
-Q 10
+Q 10 Create a Datastudio report
 -- Run the query, and click 'Explore Data' > 'Explore with Data Studio' to link the query to a DS report. Change the default table graph type into a line graph. 
 SELECT
   date,
