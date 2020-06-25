@@ -55,11 +55,11 @@ and date='2020-04-30'
 
 -- Query 5: Identifying specific day
 SELECT 
-date, sum(deaths) total_deaths, sum(confirmed) total_confirmed_cases, sum(deaths) /sum(confirmed)*100 as case_fatality_ratio
+date,  
 FROM `bigquery-public-data.covid19_jhu_csse_eu.summary`  
 WHERE country_region = 'Italy'
 and deaths > 10000
-Group by 1
+order by date 
 
 -- Query 6: Finding days with zero net new cases
 -- Combine both queries together : 
@@ -161,6 +161,23 @@ from us_previous_day_comparison
 where percentage_increase > 10
 
 
+-- Query 8: Recovery rate
+
+SELECT 
+  country_region country, 
+  sum(recovered) recovered_cases, 
+  sum(confirmed) confirmed_cases, 
+  (sum(recovered)/sum(confirmed)) *100 recovery_rate
+FROM
+    `bigquery-public-data.covid19_jhu_csse_eu.summary`
+
+WHERE confirmed > 50000
+AND date = '2020-05-10'
+Group by 1
+Order by recovery_rate desc
+Limit 10
+
+
 -- Query 9: CDGR - Cumulative Daily Growth Rate
 -- Lead Returns the value of the value_expression on a subsequent row. 
 -- In the sample, LEAD(name) OVER (PARTITION BY division ORDER BY finish_time ASC) // PARTITION BY is optional but Order by is mandatory 
@@ -195,3 +212,17 @@ select first_day_cases, last_day_cases, days_diff, POW((last_day_cases/first_day
 from summary
 
 
+
+Q 10
+-- Run the query, and click 'Explore Data' > 'Explore with Data Studio' to link the query to a DS report. Change the default table graph type into a line graph. 
+SELECT
+  date,
+  SUM(confirmed) AS country_cases,
+  SUM(deaths) AS country_deaths,
+FROM
+  `bigquery-public-data.covid19_jhu_csse_eu.summary`
+WHERE
+  date BETWEEN '2020-03-15'
+  AND '2020-04-30'
+  AND country_region='US'
+GROUP BY date
